@@ -1,0 +1,8 @@
+frontend docker src/frontend
+userservice docker src/accounts/userservice
+contacts docker src/accounts/contacts
+accounts-db docker src/accounts/accounts-db
+ledger-db docker src/ledger/ledger-db
+ledgerwriter jib src/ledger/ledgerwriter
+balancereader jib src/ledger/balancereader
+transactionhistory jib src/ledger/transactionhistory

@@ -6,3 +6,12 @@ __pycache__
 README.md
 skaffold.yaml
 .kpt-pipeline
+.venv/
+reports/
+htmlcov/
+.coverage*
+.env
+.env.*
+.secrets/
+*.key
+*.pem

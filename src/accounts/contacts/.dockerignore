@@ -5,3 +5,12 @@ __pycache__
 .coverage
 README.md
 skaffold.yaml
+.venv/
+reports/
+htmlcov/
+.coverage*
+.env
+.env.*
+.secrets/
+*.key
+*.pem

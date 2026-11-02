@@ -214,3 +214,12 @@ go/
 
 # GitHub Actions Google Cloud credentials JSON
 gha-creds-*.json
+
+# BankOps CI environments, reports and temporary files
+**/.venv/
+**/reports/
+**/.coverage*
+**/htmlcov/
+.ci-docker/
+.ci-images
+.ci-built-images
