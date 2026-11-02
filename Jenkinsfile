@@ -17,7 +17,7 @@ pipeline {
     }
     environment {
         // THAY bằng username/organization Docker Hub thật trước khi chạy.
-        DOCKERHUB_NAMESPACE = 'YOUR_DOCKERHUB_NAMESPACE'
+        DOCKERHUB_NAMESPACE = 'tunas106'
     }
     stages {
         stage('Checkout') {
