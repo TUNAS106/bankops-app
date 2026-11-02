@@ -65,7 +65,7 @@ pipeline {
             when { expression { return params.PUBLISH_IMAGES } }
             steps {
                 // Chỉ cấp credential trong bước push; shell đọc token từ biến môi trường.
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-bankops-push',
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-bankops',
                                  usernameVariable: 'DH_USER', passwordVariable: 'DH_TOKEN')]) {
                     sh '''
                         set +x
