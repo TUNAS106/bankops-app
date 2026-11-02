@@ -34,5 +34,9 @@ while read -r image; do
   printf '%s\t%s\n' "$image" "$digest" >> reports/published-images.tsv
 done < .ci-built-images
 # Bộ BankOps hiện có tám image; chỉ đánh dấu hoàn tất khi push đủ.
-[[ $(wc -l < reports/published-images.tsv) -eq 8 ]]
+published_count=$(wc -l < reports/published-images.tsv)
+if [[ "$published_count" -ne 8 ]]; then
+  echo "Expected 8 published images, got $published_count. Check images.tsv and build logs." >&2
+  exit 1
+fi
 printf 'All 8 images published\n' > reports/publish-complete.txt

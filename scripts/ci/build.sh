@@ -21,7 +21,8 @@ export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 export PATH="$JAVA_HOME/bin:$PATH"
 
 # Đọc mỗi dòng images.tsv thành ba biến: tên service, cách build, thư mục.
-while read -r service builder source_dir; do
+# Vẫn xử lý dòng cuối nếu file danh sách thiếu ký tự xuống dòng.
+while read -r service builder source_dir || [[ -n "${service:-}" ]]; do
   # Ghép tên Docker Hub với tag do Jenkins tạo từ commit SHA và số build.
   image="$DOCKERHUB_NAMESPACE/bankops-$service:$IMAGE_TAG"
   printf '%s\n' "$image" >> .ci-images
