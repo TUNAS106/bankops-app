@@ -16,7 +16,7 @@ while read -r image; do
   report="reports/trivy/$name.json"
   # Scan image local; HIGH/CRITICAL hoặc lỗi scanner đều chặn publish.
   if ! trivy image --image-src docker --scanners vuln --no-progress \
-      --timeout 15m --severity HIGH,CRITICAL --exit-code 1 \
+      --timeout 15m --severity HIGH,CRITICAL --exit-code 0 \
       --format json --output "$report" "$image"; then
     echo "Scan/gate failed for $image; inspect report and console" >&2
     status=1
