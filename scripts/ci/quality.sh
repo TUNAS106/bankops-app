@@ -1,39 +1,34 @@
 #!/usr/bin/env bash
-# Dừng khi lệnh lỗi (-e), biến chưa khai báo (-u), hoặc một lệnh trong pipeline lỗi.
 set -euo pipefail
-# Tìm thư mục gốc repo để chạy đúng dù gọi script từ thư mục con.
 ROOT=$(git rev-parse --show-toplevel)
 cd "$ROOT"
-# Tạo nơi lưu bằng chứng để Jenkins có thể hiển thị/tải về sau build.
-mkdir -p reports
-
-# Lần lượt kiểm tra ba service Python, tránh chạy song song tốn RAM.
-for service_dir in src/frontend src/accounts/userservice src/accounts/contacts; do
-  # Subshell: cd bên trong không đổi thư mục của vòng lặp bên ngoài.
-  (
-    cd "$ROOT/$service_dir"
-    # Cài dependency; --locked báo lỗi nếu pyproject.toml và uv.lock lệch nhau.
-    uv sync --locked --python 3.14 --group dev
-    # Kiểm tra code theo quy tắc chung trong .pylintrc của repo.
-    uv run --locked pylint --rcfile="$ROOT/.pylintrc" ./*.py
-    # Frontend hiện chưa có unit test suite; hai service còn lại chạy pytest.
-    if [[ "$service_dir" != src/frontend ]]; then
-      mkdir -p reports
-      # XML là báo cáo để Jenkins hiển thị từng test case.
-      uv run --locked pytest tests/ -v --junitxml=reports/junit.xml
-    fi
-  )
-done
-
-# Chọn JDK 17 cho build app trong script; Jenkins service vẫn dùng Java 21.
+# Jenkins chạy select-services.py trước để tạo danh sách của riêng lần build.
+selection=reports/selected-services.tsv
+test -f "$selection"
 export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 export PATH="$JAVA_HOME/bin:$PATH"
-# Chạy Maven trong từng module để tìm đúng checkstyle.xml.
-for service in ledgerwriter balancereader transactionhistory; do
-  # Subshell: cd bên trong không đổi thư mục của vòng lặp bên ngoài.
-  (
-    cd "$ROOT/src/ledger/$service"
-    # verify chạy compile/test/package; checkstyle:check kiểm tra style Java.
-    bash "$ROOT/mvnw" -B -ntp clean verify checkstyle:check
-  )
-done
+
+while read -r service builder source_dir || [[ -n "${service:-}" ]]; do
+  echo "=== Quality: $service ==="
+  if [[ "$builder" == jib ]]; then
+    (
+      cd "$ROOT/$source_dir"
+      # Chạy trong module để tìm đúng checkstyle.xml. verify gồm unit test.
+      bash "$ROOT/mvnw" -B -ntp clean verify checkstyle:check
+    )
+  elif [[ "$service" == frontend || "$service" == userservice || "$service" == contacts ]]; then
+    (
+      cd "$ROOT/$source_dir"
+      uv sync --locked --python 3.14 --group dev
+      uv run --locked pylint --rcfile="$ROOT/.pylintrc" ./*.py
+      # Frontend chưa có unit test suite trong source hiện tại.
+      if [[ "$service" != frontend ]]; then
+        mkdir -p reports
+        uv run --locked pytest tests/ -v --junitxml=reports/junit.xml
+      fi
+    )
+  else
+    # Hai database hiện chỉ có bước build và scan, chưa có unit test suite.
+    echo "No unit test suite configured for $service"
+  fi
+done < "$selection"

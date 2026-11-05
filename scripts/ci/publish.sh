@@ -33,10 +33,12 @@ while read -r image; do
   [[ -n "$digest" ]] || { echo "No registry digest for $image" >&2; exit 1; }
   printf '%s\t%s\n' "$image" "$digest" >> reports/published-images.tsv
 done < .ci-built-images
-# Bộ BankOps hiện có tám image; chỉ đánh dấu hoàn tất khi push đủ.
+# Số image cần push tùy theo service thay đổi, không cố định là tám.
+expected_count=$(wc -l < reports/selected-services.tsv)
+built_count=$(wc -l < .ci-built-images)
 published_count=$(wc -l < reports/published-images.tsv)
-if [[ "$published_count" -ne 8 ]]; then
-  echo "Expected 8 published images, got $published_count. Check images.tsv and build logs." >&2
+if [[ "$expected_count" -eq 0 || "$built_count" -ne "$expected_count" || "$published_count" -ne "$expected_count" ]]; then
+  echo "Expected $expected_count images; built $built_count, published $published_count." >&2
   exit 1
 fi
-printf 'All 8 images published\n' > reports/publish-complete.txt
+printf 'All selected images published\n' > reports/publish-complete.txt

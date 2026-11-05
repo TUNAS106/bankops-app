@@ -14,7 +14,7 @@ while read -r image; do
   # Bỏ phần :tag để dùng tên repository làm tên file report.
   name=${name%%:*}
   report="reports/trivy/$name.json"
-  # Scan image local; HIGH/CRITICAL hoặc lỗi scanner đều chặn publish.
+  # Chế độ hiện tại: lưu HIGH/CRITICAL vào report, chỉ lỗi scanner chặn publish.
   if ! trivy image --image-src docker --scanners vuln --no-progress \
       --timeout 15m --severity HIGH,CRITICAL --exit-code 0 \
       --format json --output "$report" "$image"; then

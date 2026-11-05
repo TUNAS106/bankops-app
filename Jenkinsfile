@@ -10,10 +10,16 @@ pipeline {
         timeout(time: 120, unit: 'MINUTES')
         buildDiscarder(logRotator(numToKeepStr: '15', artifactNumToKeepStr: '10'))
     }
+    // GitHub plugin nhận push webhook và kiểm tra thay đổi của branch trong job.
+    triggers {
+        githubPush()
+    }
     // Lần đầu bỏ chọn publish để kiểm tra các gate trước khi push.
     parameters {
         booleanParam(name: 'PUBLISH_IMAGES', defaultValue: false,
-                     description: 'Push all 8 images after every gate passes')
+                     description: 'Push selected images after every gate passes')
+        booleanParam(name: 'FORCE_ALL', defaultValue: false,
+                     description: 'Build all services regardless of Git changes')
     }
     environment {
         // THAY bằng username/organization Docker Hub thật trước khi chạy.
@@ -25,10 +31,14 @@ pipeline {
                 // Xóa workspace cũ để report lần trước không lẫn vào lần này.
                 deleteDir()
                 // Lấy repo và branch đã cấu hình trong Pipeline from SCM.
-                checkout scm
+                script {
+                    def gitInfo = checkout scm
+                    // So sánh từ lần THÀNH CÔNG gần nhất để không bỏ thay đổi của build lỗi.
+                    env.BASE_COMMIT = gitInfo.GIT_PREVIOUS_SUCCESSFUL_COMMIT ?: ''
+                }
                 script {
                     env.SOURCE_SHA = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
-                    // Cùng một tag được dùng cho toàn bộ tám image.
+                    // Các service được chọn dùng tag mới; service không đổi giữ tag cũ khi deploy.
                     env.IMAGE_TAG = "sha-${env.SOURCE_SHA.take(12)}-b${env.BUILD_NUMBER}"
                 }
                 sh '''
@@ -43,7 +53,20 @@ pipeline {
                 '''
             }
         }
+        stage('Select changed services') {
+            steps {
+                // Kiểm tra quy tắc chọn service trước khi dùng nó cho build thật.
+                sh 'python3 -m unittest discover -s scripts/ci/tests -v'
+                withEnv(["FORCE_ALL=${params.FORCE_ALL}"]) {
+                    sh 'python3 scripts/ci/select-services.py'
+                }
+                script {
+                    env.HAS_CHANGES = readFile('reports/selected-services.tsv').trim() ? 'true' : 'false'
+                }
+            }
+        }
         stage('Lint and unit tests') {
+            when { expression { env.HAS_CHANGES == 'true' } }
             steps {
                 sh 'bash scripts/ci/quality.sh'
             }
@@ -55,14 +78,16 @@ pipeline {
                 }
             }
         }
-        stage('Build 8 images') {
+        stage('Build selected images') {
+            when { expression { env.HAS_CHANGES == 'true' } }
             steps { sh 'bash scripts/ci/build.sh' }
         }
-        stage('Scan 8 images') {
+        stage('Scan selected images') {
+            when { expression { env.HAS_CHANGES == 'true' } }
             steps { sh 'bash scripts/ci/scan.sh' }
         }
         stage('Publish Docker Hub') {
-            when { expression { return params.PUBLISH_IMAGES } }
+            when { expression { return params.PUBLISH_IMAGES && env.HAS_CHANGES == 'true' } }
             steps {
                 // Chỉ cấp credential trong bước push; shell đọc token từ biến môi trường.
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-bankops',

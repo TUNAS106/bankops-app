@@ -10,6 +10,8 @@ ROOT=$PWD
 : "${IMAGE_TAG:?Missing tag}"
 # Tạo nơi lưu bằng chứng để Jenkins có thể hiển thị/tải về sau build.
 mkdir -p reports
+# Danh sách đã chọn do select-services.py tạo; thiếu file thì dừng.
+test -f reports/selected-services.tsv
 # Làm rỗng danh sách tag cần cleanup, kể cả khi build dừng giữa chừng.
 : > .ci-images
 # Danh sách riêng chỉ chứa image đã build thành công để scan/push.
@@ -20,7 +22,7 @@ mkdir -p reports
 export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 export PATH="$JAVA_HOME/bin:$PATH"
 
-# Đọc mỗi dòng images.tsv thành ba biến: tên service, cách build, thư mục.
+# Đọc mỗi dòng selected-services.tsv thành ba biến: tên service, cách build, thư mục.
 # Vẫn xử lý dòng cuối nếu file danh sách thiếu ký tự xuống dòng.
 while read -r service builder source_dir || [[ -n "${service:-}" ]]; do
   # Ghép tên Docker Hub với tag do Jenkins tạo từ commit SHA và số build.
@@ -44,4 +46,4 @@ while read -r service builder source_dir || [[ -n "${service:-}" ]]; do
   # Lưu định danh image local để đối chiếu artifact của lần build.
   image_id=$(docker image inspect --format '{{.Id}}' "$image")
   printf '%s\t%s\t%s\n' "$service" "$image" "$image_id" >> reports/local-images.tsv
-done < scripts/ci/images.tsv
+done < reports/selected-services.tsv
