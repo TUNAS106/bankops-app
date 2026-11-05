@@ -1,4 +1,4 @@
-
+"""Render the banking UI and forward requests to backend services."""
 import concurrent.futures
 import datetime
 import json
